@@ -14,19 +14,34 @@ HTML_TEMPLATE = """
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; }
         .header { background: #0f172a; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        
         .controls { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
         .controls input, .controls select { padding: 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9em; width: 100%; box-sizing: border-box; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
-        .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid #10b981; word-break: break-word; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        
+        /* Kompakt Kart Yapısı */
+        .card { background: white; border-radius: 8px; padding: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid #10b981; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; display: flex; flex-direction: column; justify-content: space-between; height: 180px; }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
         .card.opsiyon { border-left-color: #f59e0b; }
-        .card-header { font-size: 0.85em; color: #0369a1; font-weight: bold; margin-bottom: 8px; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; display: inline-block; }
-        .price { font-size: 1.3em; font-weight: bold; color: #0f172a; margin: 5px 0; }
-        .sender-info { background: #f8fafc; padding: 8px; border-radius: 6px; font-size: 0.85em; color: #334155; margin-bottom: 10px; border: 1px solid #e2e8f0; }
-        .badge { background: #10b981; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75em; float: right; }
+        
+        .card-header { font-size: 0.8em; color: #0369a1; font-weight: bold; background: #e0f2fe; padding: 3px 6px; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
+        .price { font-size: 1.2em; font-weight: bold; color: #0f172a; margin: 4px 0; }
+        .sender-preview { font-size: 0.8em; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .text-preview { font-size: 0.82em; color: #64748b; margin-top: 8px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .badge { background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; float: right; }
         .badge.opsiyon { background: #f59e0b; }
-        .media-container { margin-top: 10px; text-align: center; background: #000; border-radius: 6px; overflow: hidden; }
-        .media-container img, .media-container video { width: 100%; max-height: 250px; display: block; object-fit: contain; }
-        .footer-info { display: flex; justify-content: space-between; font-size: 0.75em; color: #94a3b8; margin-top: 10px; }
+        .media-badge { background: #6366f1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; float: right; margin-right: 4px; }
+
+        /* Modal (Açılır Pencere) Stilleri */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(2px); align-items: center; justify-content: center; }
+        .modal-content { background-color: #fff; border-radius: 10px; width: 90%; max-width: 650px; max-height: 85vh; overflow-y: auto; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; font-weight: bold; color: #64748b; cursor: pointer; }
+        .close-btn:hover { color: #0f172a; }
+        .modal-media { margin-top: 15px; text-align: center; background: #000; border-radius: 8px; overflow: hidden; }
+        .modal-media img, .modal-media video { width: 100%; max-height: 380px; display: block; object-fit: contain; }
+        .sender-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin: 10px 0; font-size: 0.9em; }
     </style>
 </head>
 <body>
@@ -77,57 +92,108 @@ HTML_TEMPLATE = """
     <div class="grid" id="ilan-container">
         {% for ilan in ilanlar %}
         <div class="card {% if 'opsiyon' in ilan.durum.lower() %}opsiyon{% endif %}" 
+             onclick="openModal({{ loop.index0 }})"
              data-detay="{{ ilan.detay_normalized }}" 
              data-gonderen="{{ ilan.gonderen_tel }} {{ ilan.gonderen_adi_normalized }}" 
              data-durum="{{ ilan.durum }}"
              data-fiyat="{{ ilan.fiyat_raw }}">
             <div>
                 <span class="badge {% if 'opsiyon' in ilan.durum.lower() %}opsiyon{% endif %}">{{ ilan.durum }}</span>
+                {% if ilan.media_data %}
+                <span class="media-badge">🎥 Medya Var</span>
+                {% endif %}
                 <div class="card-header">📢 {{ ilan.grup_adi }}</div>
                 <div class="price">{{ ilan.fiyat }}</div>
-                
-                <div class="sender-info">
-                    👤 <b>Gönderen:</b> {{ ilan.gonderen_adi }}<br>
-                    📞 <b>Tel:</b> <a href="https://wa.me/{{ ilan.gonderen_tel }}" target="_blank" style="color:#2563eb; font-weight:bold;">{{ ilan.gonderen_tel_formatli }}</a>
-                </div>
-
-                <p style="color: #334155; font-size: 0.9em; line-height: 1.45; white-space: pre-line;">{{ ilan.detay }}</p>
+                <div class="sender-preview">👤 {{ ilan.gonderen_adi }} | 📞 {{ ilan.gonderen_tel_formatli }}</div>
+                <div class="text-preview">{{ ilan.detay }}</div>
             </div>
-
-            <div>
-                {% if ilan.media_data %}
-                <div class="media-container">
-                    {% if 'video' in ilan.media_mimetype %}
-                    <video controls src="data:{{ ilan.media_mimetype }};base64,{{ ilan.media_data }}"></video>
-                    {% else %}
-                    <img src="data:{{ ilan.media_mimetype }};base64,{{ ilan.media_data }}" alt="İlan Medyası">
-                    {% endif %}
-                </div>
-                {% endif %}
-                <div class="footer-info">
-                    <span>🕒 {{ ilan.tarih }}</span>
-                    <span>İlan ID: #{{ loop.index }}</span>
-                </div>
+            <div style="font-size:0.7em; color:#94a3b8; margin-top:6px; display:flex; justify-content:space-between;">
+                <span>🕒 {{ ilan.tarih }}</span>
+                <span style="color:#2563eb; font-weight:bold;">Tıkla Detay Gör &rarr;</span>
             </div>
         </div>
         {% else %}
-        <p style="text-align:center; width:100%; color:#64748b;">Henüz ilan yok.</p>
+        <p style="text-align:center; width:100%; color:#64748b;">Henüz kaydedilmiş ilan bulunmuyor.</p>
         {% endfor %}
     </div>
 
+    <!-- Modal Yapısı -->
+    <div id="detailModal" class="modal" onclick="closeModalOnOuterClick(event)">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <span id="mBadge" class="badge"></span>
+            <div id="mGrup" class="card-header"></div>
+            <div id="mFiyat" class="price" style="margin-top:10px;"></div>
+            
+            <div class="sender-box">
+                👤 <b>Gönderen Danışman:</b> <span id="mGonderen"></span><br>
+                📞 <b>Telefon:</b> <a id="mTelLink" href="" target="_blank" style="color:#2563eb; font-weight:bold;"></a>
+            </div>
+
+            <p id="mDetay" style="color: #334155; font-size: 0.95em; line-height: 1.5; white-space: pre-line; background:#f1f5f9; padding:12px; border-radius:6px;"></p>
+
+            <div id="mMediaContainer" class="modal-media" style="display:none;"></div>
+            
+            <div style="margin-top:15px; font-size:0.8em; color:#94a3b8; text-align:right;">
+                🕒 İlan Tarihi: <span id="mTarih"></span>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Türkçe Karakterleri Normalleştirme Fonksiyonu
+        const ilanlarData = {{ ilanlar | tojson }};
+
+        function openModal(index) {
+            const ilan = ilanlarData[index];
+            if (!ilan) return;
+
+            document.getElementById('mGrup').innerText = '📢 ' + ilan.grup_adi;
+            document.getElementById('mFiyat').innerText = ilan.fiyat;
+            document.getElementById('mBadge').innerText = ilan.durum;
+            document.getElementById('mBadge').className = 'badge ' + (ilan.durum.toLowerCase().includes('opsiyon') ? 'opsiyon' : '');
+            document.getElementById('mGonderen').innerText = ilan.gonderen_adi;
+            
+            const telLink = document.getElementById('mTelLink');
+            telLink.innerText = ilan.gonderen_tel_formatli;
+            telLink.href = 'https://wa.me/' + ilan.gonderen_tel;
+
+            document.getElementById('mDetay').innerText = ilan.detay;
+            document.getElementById('mTarih').innerText = ilan.tarih;
+
+            const mediaBox = document.getElementById('mMediaContainer');
+            if (ilan.media_data) {
+                mediaBox.style.display = 'block';
+                if (ilan.media_mimetype.includes('video')) {
+                    mediaBox.innerHTML = `<video controls src="data:${ilan.media_mimetype};base64,${ilan.media_data}"></video>`;
+                } else {
+                    mediaBox.innerHTML = `<img src="data:${ilan.media_mimetype};base64,${ilan.media_data}" alt="İlan Medyası">`;
+                }
+            } else {
+                mediaBox.style.display = 'none';
+                mediaBox.innerHTML = '';
+            }
+
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').style.display = 'none';
+            const mediaBox = document.getElementById('mMediaContainer');
+            mediaBox.innerHTML = ''; // Videoyu durdurmak için temizle
+        }
+
+        function closeModalOnOuterClick(e) {
+            if (e.target.id === 'detailModal') {
+                closeModal();
+            }
+        }
+
         function normalizeTR(text) {
             if (!text) return "";
             return text.toString().toLowerCase()
-                .replace(/ğ/g, "g")
-                .replace(/ü/g, "u")
-                .replace(/ş/g, "s")
-                .replace(/ı/g, "i")
-                .replace(/ö/g, "o")
-                .replace(/ç/g, "c")
-                .replace(/İ/g, "i")
-                .replace(/I/g, "i");
+                .replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s")
+                .replace(/ı/g, "i").replace(/ö/g, "o").replace(/ç/g, "c")
+                .replace(/İ/g, "i").replace(/I/g, "i");
         }
 
         function filterCards() {
@@ -189,7 +255,7 @@ def ilan_ekle():
         
         ilanlar.insert(0, {
             "grup_adi": str(data.get('grup_adi', 'Emlak Grubu')),
-            "gonderen_adi": gonderenAdi if 'gonderenAdi' in locals() else gonderen_adi,
+            "gonderen_adi": gonderen_adi,
             "gonderen_adi_normalized": tr_normalize(gonderen_adi),
             "gonderen_tel": str(data.get('gonderen_tel', '')),
             "gonderen_tel_formatli": str(data.get('gonderen_tel_formatli', '')),

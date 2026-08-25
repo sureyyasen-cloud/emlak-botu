@@ -22,7 +22,6 @@ def save_data(data):
     except Exception:
         pass
 
-# HTML Şablonu (Tek dosya mimarisi)
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -60,7 +59,8 @@ HTML_TEMPLATE = """
                     {% endif %}
                 </div>
             </div>
-            {% else %}
+            {% endfor %}
+            {% if not ilanlar %}
             <div class="col-12"><div class="alert alert-info">Henüz gelen ilan yok.</div></div>
             {% endif %}
         </div>
@@ -79,29 +79,19 @@ def ilan_ekle():
     try:
         data = request.get_json() or {}
         
-        grup_adi = data.get('grup_adi', 'Bilinmeyen Grup')
-        gonderen_adi = data.get('gonderen_adi', 'Bilinmiyor')
-        gonderen_tel = data.get('gonderen_tel', '')
-        gonderen_tel_formatli = data.get('gonderen_tel_formatli', '')
-        detay = data.get('detay', '')
-        resim_url = data.get('resim_url', '')
-        is_video = data.get('is_video', False)
-        tarih = data.get('tarih', '')
+        yeni_ilan = {
+            "id": len(load_data()) + 1,
+            "grup_adi": data.get('grup_adi', 'Bilinmeyen Grup'),
+            "gonderen_adi": data.get('gonderen_adi', 'Bilinmiyor'),
+            "gonderen_tel": data.get('gonderen_tel', ''),
+            "gonderen_tel_formatli": data.get('gonderen_tel_formatli', ''),
+            "detay": data.get('detay', ''),
+            "resim_url": data.get('resim_url', ''),
+            "is_video": data.get('is_video', False),
+            "tarih": data.get('tarih', '')
+        }
 
         ilanlar = load_data()
-        
-        yeni_ilan = {
-            "id": len(ilanlar) + 1,
-            "grup_adi": grup_adi,
-            "gonderen_adi": gonderen_adi,
-            "gonderen_tel": gonderen_tel,
-            "gonderen_tel_formatli": gonderen_tel_formatli,
-            "detay": detay,
-            "resim_url": resim_url,
-            "is_video": is_video,
-            "tarih": tarih
-        }
-        
         ilanlar.insert(0, yeni_ilan)
         save_data(ilanlar)
         

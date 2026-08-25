@@ -33,7 +33,7 @@ def ilan_ekle():
     try:
         data = request.get_json() or {}
         
-        # Eksik veri gelse bile sunucunun 500 hatası vermesini engeller
+        # Parametreleri güvenli şekilde alıyoruz
         grup_adi = data.get('grup_adi', 'Bilinmeyen Grup')
         gonderen_adi = data.get('gonderen_adi', 'Bilinmiyor')
         gonderen_tel = data.get('gonderen_tel', '')
@@ -47,7 +47,7 @@ def ilan_ekle():
         
         yeni_ilan = {
             "id": len(ilanlar) + 1,
-            "grup_adi": grupAdi if 'grupAdi' in locals() else grup_adi,
+            "grup_adi": grup_adi,
             "gonderen_adi": gonderen_adi,
             "gonderen_tel": gonderen_tel,
             "gonderen_tel_formatli": gonderen_tel_formatli,
@@ -57,7 +57,6 @@ def ilan_ekle():
             "tarih": tarih
         }
         
-        # Yeni ilanı listenin en başına ekler
         ilanlar.insert(0, yeni_ilan)
         save_data(ilanlar)
         
@@ -65,7 +64,6 @@ def ilan_ekle():
 
     except Exception as e:
         print("API Hatası:", str(e))
-        # Sunucunun dökülmesini engelleyen güvenli dönüş
         return jsonify({"status": "error", "message": str(e)}), 200
 
 if __name__ == '__main__':

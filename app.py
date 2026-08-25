@@ -1,10 +1,16 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 import sqlite3
 import os
 
 app = Flask(__name__)
-CORS(app)
+
+# CORS ayarları (Harici paket gerektirmeden manual çözüm)
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 DB_FILE = "ilanlar.db"
 
@@ -30,8 +36,11 @@ def init_db():
 
 init_db()
 
-@app.route('/api/ilan-ekle', methods=['POST'])
+@app.route('/api/ilan-ekle', methods=['POST', 'OPTIONS'])
 def ilan_ekle():
+    if request.method == 'OPTIONS':
+        return jsonify({"status": "ok"}), 200
+        
     try:
         data = request.get_json(force=True) or {}
         
@@ -58,7 +67,6 @@ def ilan_ekle():
         return jsonify({"success": True, "message": "İlan kaydedildi"}), 200
 
     except Exception as e:
-        print(f"Hata oluştu: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/ilanlar', methods=['GET'])
@@ -89,4 +97,5 @@ def ilanlari_getir():
         return jsonify([]), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)

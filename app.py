@@ -2,7 +2,7 @@ from flask import Flask, render_template_string, jsonify, request
 
 app = Flask(__name__)
 
-# İlan veritabanı (Hafızada tutulur)
+# Sınırsız İlan Veritabanı (Hafızada tutulur)
 ilanlar = []
 
 HTML_TEMPLATE = """
@@ -22,7 +22,7 @@ HTML_TEMPLATE = """
         .card.opsiyon { border-left-color: #f59e0b; }
         .card-header { font-size: 0.85em; color: #64748b; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
         .price { font-size: 1.25em; font-weight: bold; color: #0f172a; margin: 5px 0 10px 0; }
-        .sender-info { background: #f8fafc; padding: 8px; border-radius: 6px; font-size: 0.85em; color: #334155; margin-bottom: 10px; }
+        .sender-info { background: #f8fafc; padding: 8px; border-radius: 6px; font-size: 0.85em; color: #334155; margin-bottom: 10px; line-height: 1.5; }
         .badge { background: #10b981; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75em; position: absolute; top: 15px; right: 15px; }
         .badge.opsiyon { background: #f59e0b; }
         .video-btn { background: #2563eb; color: white; text-align: center; padding: 8px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 10px; display: block; font-size: 0.9em; }
@@ -35,9 +35,10 @@ HTML_TEMPLATE = """
         <h2 style="margin:0;">🏠 Canlı Emlak Portföy & Filtreleme Paneli</h2>
     </div>
 
+    <!-- GELİŞMİŞ FİLTRELEME ALANI -->
     <div class="controls">
         <input type="text" id="searchInput" onkeyup="filterCards()" placeholder="İlan detayında ara (örn: 2+1, Daire, Esenyurt)...">
-        <input type="text" id="phoneInput" onkeyup="filterCards()" placeholder="Telefon numarası ile ara...">
+        <input type="text" id="phoneInput" onkeyup="filterCards()" placeholder="Telefon veya Kişi ismi ara...">
         <select id="statusFilter" onchange="filterCards()">
             <option value="">Tüm Durumlar</option>
             <option value="Satışta">Satışta</option>
@@ -50,7 +51,7 @@ HTML_TEMPLATE = """
         {% for ilan in ilanlar %}
         <div class="card {% if 'opsiyon' in ilan.durum.lower() %}opsiyon{% endif %}" 
              data-detay="{{ ilan.detay.lower() }}" 
-             data-gonderen="{{ ilan.gonderen_tel }}" 
+             data-gonderen="{{ ilan.gonderen_tel.lower() }} {{ ilan.gonderen_adi.lower() }}" 
              data-durum="{{ ilan.durum }}">
             <div>
                 <span class="badge {% if 'opsiyon' in ilan.durum.lower() %}opsiyon{% endif %}">{{ ilan.durum }}</span>
@@ -76,7 +77,7 @@ HTML_TEMPLATE = """
             </div>
         </div>
         {% else %}
-        <p style="text-align:center; width:100%; color:#64748b;">Henüz kaydedilmiş ilan bulunmuyor. Bot çalıştıkça ilanlar buraya akacaktır.</p>
+        <p style="text-align:center; width:100%; color:#64748b;">Henüz kaydedilmiş ilan bulunmuyor. Bot çalıştıkça tüm ilanlar buraya akacaktır.</p>
         {% endfor %}
     </div>
 
@@ -126,9 +127,7 @@ def ilan_ekle():
             "has_media": bool(data.get('has_media', False)),
             "tarih": str(data.get('tarih', ''))
         })
-        # Hafıza sınırı: Son 500 ilanı canlı tut
-        if len(ilanlar) > 500:
-            ilanlar.pop()
+        # Herhangi bir limit bulunmuyor, tüm ilanlar sınırsız eklenir.
         return jsonify({"status": "success", "count": len(ilanlar)}), 200
     return jsonify({"status": "error"}), 400
 

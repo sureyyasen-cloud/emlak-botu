@@ -1,24 +1,26 @@
-from flask import Flask, request, jsonify, render_template_string
+import os
 import re
+from flask import Flask, request, jsonify, render_template_string
 
 app = Flask(__name__)
 
 ilanlar = []
 
 def fiyat_bul(metin):
-    if not metin:
+    if not metin or not isinstance(metin, str):
         return "Belirtilmedi", 0
-    # 1.920.000 TL, 1920000TL, 1.920.000₺ gibi desenleri yakalar
     match = re.search(r'(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:TL|tl|₺)', metin)
     if match:
-        raw_price = int(re.sub(r'[^\d]', '', match.group(1)))
-        return match.group(0), raw_price
+        try:
+            raw_price = int(re.sub(r'[^\d]', '', match.group(1)))
+            return match.group(0), raw_price
+        except ValueError:
+            return "Belirtilmedi", 0
     return "Belirtilmedi", 0
 
 def metin_ozeti(metin):
-    if not metin:
+    if not metin or not isinstance(metin, str):
         return ""
-    # Karşılaştırma için özel karakterleri ve boşlukları temizler
     temiz = re.sub(r'[^\w\s]', '', metin.lower()).strip()
     return temiz[:60]
 
@@ -33,7 +35,6 @@ HTML_TEMPLATE = """
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; padding: 15px; }
         .header { background: #ffc107; padding: 12px 20px; border-radius: 6px; font-weight: bold; font-size: 22px; margin-bottom: 15px; color: #222; }
         
-        /* SAHİBİNDEN TARZI FİLTRELEME BARI */
         .filter-bar { background: #fdfdfd; padding: 15px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #ddd; }
         .filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
         .filter-row select, .filter-row input { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: #fff; }
@@ -44,7 +45,6 @@ HTML_TEMPLATE = """
         .btn-map { background: #fff; color: #4285f4; border: 1px solid #4285f4; padding: 9px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; }
         .more-options { color: #0056b3; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 5px; display: inline-block; }
 
-        /* İLAN LİSTESİ */
         .card { background: #fff; border-radius: 6px; padding: 12px 15px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; align-items: center; cursor: pointer; border-left: 4px solid #4285f4; position: relative; }
         .card:hover { background: #f8fafc; }
         .card img, .card video { width: 110px; height: 85px; object-fit: cover; border-radius: 4px; margin-right: 15px; background: #000; }
@@ -56,7 +56,6 @@ HTML_TEMPLATE = """
         .price { font-size: 16px; font-weight: bold; color: #c53030; }
         .badge-tekil { background: #ebf8ff; color: #2b6cb0; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px; border: 1px solid #bee3f8; display: inline-block; margin-top: 3px; }
 
-        /* MODAL */
         .modal-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; }
         .modal-body { background: #fff; padding: 25px; border-radius: 10px; max-width: 750px; width: 90%; max-height: 85vh; overflow-y: auto; position: relative; }
         .modal-close { position: absolute; top: 15px; right: 20px; font-size: 26px; font-weight: bold; cursor: pointer; color: #a0aec0; }
@@ -139,6 +138,7 @@ HTML_TEMPLATE = """
     }
 
     function urlYap(metin) {
+        if (!metin) return '';
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         return metin.replace(urlRegex, function(url) {
             return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>';
@@ -168,7 +168,7 @@ HTML_TEMPLATE = """
         container.innerHTML = '';
 
         const filtrelenmis = tumIlanlar.filter(item => {
-            const text = normalizeText(item.detay);
+            const text = normalizeText(item.detay || '');
             
             if (durum && !text.includes(durum)) return false;
             if (tur && !text.includes(tur)) return false;
@@ -201,6 +201,7 @@ HTML_TEMPLATE = """
 
             const paylasanSayisi = item.paylasanlar ? item.paylasanlar.length : 1;
             const badgeHTML = paylasanSayisi > 1 ? `<div class="badge-tekil">🔥 ${paylasanSayisi} Farklı Kişi Paylaştı (En Uygun Fiyat)</div>` : '';
+            const baslikMetni = (item.detay || '').substring(0, 100);
 
             const card = document.createElement('div');
             card.className = 'card';
@@ -208,12 +209,12 @@ HTML_TEMPLATE = """
             card.innerHTML = `
                 ${mediaHTML}
                 <div class="details">
-                    <div class="title">${item.detay.substring(0, 100)}...</div>
-                    <div class="meta">Grup: ${item.grup_adi} | İlan Sahibi: ${item.gonderen_adi} | Tarih: ${item.tarih}</div>
+                    <div class="title">${baslikMetni}...</div>
+                    <div class="meta">Grup: ${item.grup_adi || ''} | İlan Sahibi: ${item.gonderen_adi || ''} | Tarih: ${item.tarih || ''}</div>
                     ${badgeHTML}
                 </div>
                 <div class="price-box">
-                    <div class="price">${item.fiyat}</div>
+                    <div class="price">${item.fiyat || 'Belirtilmedi'}</div>
                 </div>
             `;
             container.appendChild(card);
@@ -234,9 +235,9 @@ HTML_TEMPLATE = """
     }
 
     function detayAc(item) {
-        document.getElementById('modalBaslik').innerText = `İlan Detayı - ${item.gonderen_adi}`;
-        document.getElementById('modalMeta').innerText = `En Uygun Fiyat: ${item.fiyat} | İletişim: ${item.gonderen_tel_formatli}`;
-        document.getElementById('modalMetin').innerHTML = urlYap(item.detay);
+        document.getElementById('modalBaslik').innerText = `İlan Detayı - ${item.gonderen_adi || ''}`;
+        document.getElementById('modalMeta').innerText = `En Uygun Fiyat: ${item.fiyat || ''} | İletişim: ${item.gonderen_tel_formatli || ''}`;
+        document.getElementById('modalMetin').innerHTML = urlYap(item.detay || '');
 
         const paylasanlarBox = document.getElementById('modalPaylasanlar');
         paylasanlarBox.innerHTML = '<strong>👥 Bu İlanı Paylaşan Danışmanlar / Teklifler:</strong><br><br>';
@@ -245,16 +246,16 @@ HTML_TEMPLATE = """
             item.paylasanlar.forEach(p => {
                 paylasanlarBox.innerHTML += `
                     <div class="paylasan-item">
-                        👤 <strong>${p.gonderen_adi}</strong> (${p.gonderen_tel_formatli}) 
-                        — <span style="color:#c53030; font-weight:bold;">${p.fiyat}</span> 
-                        <span style="font-size:11px; color:#718096;">[${p.tarih}]</span>
+                        👤 <strong>${p.gonderen_adi || ''}</strong> (${p.gonderen_tel_formatli || ''}) 
+                        — <span style="color:#c53030; font-weight:bold;">${p.fiyat || ''}</span> 
+                        <span style="font-size:11px; color:#718096;">[${p.tarih || ''}]</span>
                     </div>`;
             });
         } else {
             paylasanlarBox.innerHTML += `
                 <div class="paylasan-item">
-                    👤 <strong>${item.gonderen_adi}</strong> (${item.gonderen_tel_formatli}) 
-                    — <span style="color:#c53030; font-weight:bold;">${item.fiyat}</span>
+                    👤 <strong>${item.gonderen_adi || ''}</strong> (${item.gonderen_tel_formatli || ''}) 
+                    — <span style="color:#c53030; font-weight:bold;">${item.fiyat || ''}</span>
                 </div>`;
         }
 
@@ -289,66 +290,66 @@ def home():
 
 @app.route('/api/ilan-ekle', methods=['POST'])
 def ilan_ekle():
-    data = request.json
-    if not data:
-        return jsonify({"status": "error"}), 400
-
-    fiyat_str, fiyat_raw = fiyat_bul(data.get('detay', ''))
-    data['fiyat'] = fiyat_str
-    data['fiyat_raw'] = fiyat_raw
-
-    yeni_ozet = metin_ozeti(data.get('detay', ''))
-    bulundu = False
-
-    for mevcut in ilanlar:
-        mevcut_ozet = metin_ozeti(mevcut.get('detay', ''))
+    try:
+        data = request.get_json(silent=True) or {}
+        detay_metni = data.get('detay', '')
         
-        # Eğer ilan metinlerinin ilk 60 karakteri uyuşuyorsa aynı ilandır
-        if yeni_ozet and mevcut_ozet and (yeni_ozet in mevcut_ozet or mevcut_ozet in yeni_ozet):
-            bulundu = True
-            
-            if 'paylasanlar' not in mevcut:
-                mevcut['paylasanlar'] = [{
-                    'gonderen_adi': mevcut['gonderen_adi'],
-                    'gonderen_tel_formatli': mevcut['gonderen_tel_formatli'],
-                    'fiyat': mevcut['fiyat'],
-                    'fiyat_raw': mevcut['fiyat_raw'],
-                    'tarih': mevcut['tarih']
-                }]
+        fiyat_str, fiyat_raw = fiyat_bul(detay_metni)
+        data['fiyat'] = fiyat_str
+        data['fiyat_raw'] = fiyat_raw
 
-            # Yeni paylaşan kişiyi listeye ekle
-            mevcut['paylasanlar'].append({
-                'gonderen_adi': data['gonderen_adi'],
-                'gonderen_tel_formatli': data['gonderen_tel_formatli'],
-                'fiyat': data['fiyat'],
-                'fiyat_raw': data['fiyat_raw'],
-                'tarih': data['tarih']
-            })
+        yeni_ozet = metin_ozeti(detay_metni)
+        bulundu = False
 
-            # Eğer yeni gelen fiyat daha ucuzsa kartın ana fiyatını daha ucuz olanla güncelle
-            if data['fiyat_raw'] > 0 and (mevcut['fiyat_raw'] == 0 or data['fiyat_raw'] < mevcut['fiyat_raw']):
-                mevcut['fiyat'] = data['fiyat']
-                mevcut['fiyat_raw'] = data['fiyat_raw']
-                mevcut['gonderen_adi'] = data['gonderen_adi']
-                mevcut['gonderen_tel_formatli'] = data['gonderen_tel_formatli']
-            
-            break
+        if yeni_ozet:
+            for mevcut in ilanlar:
+                mevcut_ozet = metin_ozeti(mevcut.get('detay', ''))
+                if mevcut_ozet and (yeni_ozet in mevcut_ozet or mevcut_ozet in yeni_ozet):
+                    bulundu = True
+                    
+                    if 'paylasanlar' not in mevcut or not isinstance(mevcut['paylasanlar'], list):
+                        mevcut['paylasanlar'] = [{
+                            'gonderen_adi': mevcut.get('gonderen_adi', ''),
+                            'gonderen_tel_formatli': mevcut.get('gonderen_tel_formatli', ''),
+                            'fiyat': mevcut.get('fiyat', ''),
+                            'fiyat_raw': mevcut.get('fiyat_raw', 0),
+                            'tarih': mevcut.get('tarih', '')
+                        }]
 
-    if not bulundu:
-        data['paylasanlar'] = [{
-            'gonderen_adi': data['gonderen_adi'],
-            'gonderen_tel_formatli': data['gonderen_tel_formatli'],
-            'fiyat': data['fiyat'],
-            'fiyat_raw': data['fiyat_raw'],
-            'tarih': data['tarih']
-        }]
-        ilanlar.insert(0, data)
+                    mevcut['paylasanlar'].append({
+                        'gonderen_adi': data.get('gonderen_adi', ''),
+                        'gonderen_tel_formatli': data.get('gonderen_tel_formatli', ''),
+                        'fiyat': data.get('fiyat', ''),
+                        'fiyat_raw': data.get('fiyat_raw', 0),
+                        'tarih': data.get('tarih', '')
+                    })
 
-    return jsonify({"status": "success"}), 200
+                    if data['fiyat_raw'] > 0 and (mevcut.get('fiyat_raw', 0) == 0 or data['fiyat_raw'] < mevcut['fiyat_raw']):
+                        mevcut['fiyat'] = data['fiyat']
+                        mevcut['fiyat_raw'] = data['fiyat_raw']
+                        mevcut['gonderen_adi'] = data.get('gonderen_adi', '')
+                        mevcut['gonderen_tel_formatli'] = data.get('gonderen_tel_formatli', '')
+                    
+                    break
+
+        if not bulundu:
+            data['paylasanlar'] = [{
+                'gonderen_adi': data.get('gonderen_adi', ''),
+                'gonderen_tel_formatli': data.get('gonderen_tel_formatli', ''),
+                'fiyat': data.get('fiyat', ''),
+                'fiyat_raw': data.get('fiyat_raw', 0),
+                'tarih': data.get('tarih', '')
+            }]
+            ilanlar.insert(0, data)
+
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/ilanlar', methods=['GET'])
 def ilanlar_getir():
     return jsonify(ilanlar), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)

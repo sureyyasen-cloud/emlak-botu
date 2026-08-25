@@ -1,10 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template_string
 import sqlite3
 import os
 
 app = Flask(__name__)
 
-# CORS ayarları (Harici paket gerektirmeden manual çözüm)
+# CORS ayarları
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
@@ -35,6 +35,61 @@ def init_db():
     conn.close()
 
 init_db()
+
+# 404 Hatasını Önleyen Ana Sayfa Rota Tanımı
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Emlak Portföy & Filtre Paneli</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
+        .header { background: #1a252f; color: white; text-align: center; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .card { background: white; padding: 15px; margin-bottom: 12px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .grup { font-weight: bold; color: #2c3e50; }
+        .fiyat { color: #e74c3c; font-weight: bold; font-size: 1.1em; }
+        .detay { white-space: pre-wrap; margin-top: 10px; color: #333; }
+        .meta { color: #7f8c8d; font-size: 0.85em; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>🏠 Emlak Portföyü ve Filtre Paneli</h2>
+    </div>
+    <div id="ilanlar-container">İlanlar yükleniyor...</div>
+
+    <script>
+        async function ilanlariGetir() {
+            try {
+                const res = await fetch('/api/ilanlar');
+                const data = await res.json();
+                const container = document.getElementById('ilanlar-container');
+                if (data.length === 0) {
+                    container.innerHTML = '<p>Henüz kaydedilmiş ilan bulunmuyor.</p>';
+                    return;
+                }
+                container.innerHTML = data.map(item => `
+                    <div class="card">
+                        <div class="grup">${item.grup_adi} - <span class="fiyat">${item.fiyat}</span></div>
+                        <div class="detay">${item.detay}</div>
+                        <div class="meta">Danışman: ${item.gonderen_adi} (${item.gonderen_tel_formatli}) | Tarih: ${item.tarih}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                document.getElementById('ilanlar-container').innerHTML = '<p>İlanlar yüklenirken hata oluştu.</p>';
+            }
+        }
+        ilanlariGetir();
+        setInterval(ilanlariGetir, 10000);
+    </script>
+</body>
+</html>
+"""
+
+@app.route('/')
+def home():
+    return render_template_string(HTML_TEMPLATE)
 
 @app.route('/api/ilan-ekle', methods=['POST', 'OPTIONS'])
 def ilan_ekle():

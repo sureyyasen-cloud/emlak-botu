@@ -15,6 +15,13 @@ def fiyat_bul(metin):
         return match.group(0), raw_price
     return "Belirtilmedi", 0
 
+def metin_ozeti(metin):
+    if not metin:
+        return ""
+    # Karşılaştırma için özel karakterleri ve boşlukları temizler
+    temiz = re.sub(r'[^\w\s]', '', metin.lower()).strip()
+    return temiz[:60]
+
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -38,14 +45,16 @@ HTML_TEMPLATE = """
         .more-options { color: #0056b3; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 5px; display: inline-block; }
 
         /* İLAN LİSTESİ */
-        .card { background: #fff; border-radius: 6px; padding: 12px 15px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; align-items: center; cursor: pointer; border-left: 4px solid #4285f4; }
+        .card { background: #fff; border-radius: 6px; padding: 12px 15px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; align-items: center; cursor: pointer; border-left: 4px solid #4285f4; position: relative; }
         .card:hover { background: #f8fafc; }
         .card img, .card video { width: 110px; height: 85px; object-fit: cover; border-radius: 4px; margin-right: 15px; background: #000; }
         .no-img { width: 110px; height: 85px; background: #edf2f7; border-radius: 4px; margin-right: 15px; display: flex; align-items: center; justify-content: center; color: #a0aec0; font-size: 12px; font-weight: bold; }
         .details { flex-grow: 1; }
         .title { font-size: 15px; font-weight: bold; color: #1a365d; margin-bottom: 5px; line-height: 1.3; }
         .meta { font-size: 12px; color: #718096; }
-        .price { font-size: 16px; font-weight: bold; color: #c53030; min-width: 140px; text-align: right; }
+        .price-box { min-width: 140px; text-align: right; }
+        .price { font-size: 16px; font-weight: bold; color: #c53030; }
+        .badge-tekil { background: #ebf8ff; color: #2b6cb0; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px; border: 1px solid #bee3f8; display: inline-block; margin-top: 3px; }
 
         /* MODAL */
         .modal-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; }
@@ -54,6 +63,9 @@ HTML_TEMPLATE = """
         .modal-media { width: 100%; max-height: 420px; object-fit: contain; border-radius: 6px; margin: 15px 0; background: #000; }
         .modal-text { white-space: pre-wrap; word-break: break-all; line-height: 1.6; font-size: 14px; background: #f7fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; }
         .modal-text a { color: #3182ce; font-weight: bold; text-decoration: underline; }
+        .paylasanlar-box { background: #fffaf0; border: 1px solid #feebc8; border-radius: 6px; padding: 12px; margin-top: 15px; }
+        .paylasan-item { font-size: 13px; color: #744210; padding: 4px 0; border-bottom: 1px dashed #fbd38d; }
+        .paylasan-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -109,7 +121,8 @@ HTML_TEMPLATE = """
         <h3 id="modalBaslik" style="margin-top:0;">İlan Detayı</h3>
         <div id="modalMeta" style="font-size:13px; color:#4a5568; margin-bottom:10px;"></div>
         <div id="modalMediaContainer"></div>
-        <div id="modalMetin" class="modal-text"></div>
+        <div id="modalPaylasanlar" class="paylasanlar-box"></div>
+        <div id="modalMetin" class="modal-text" style="margin-top:15px;"></div>
     </div>
 </div>
 
@@ -186,6 +199,9 @@ HTML_TEMPLATE = """
                 }
             }
 
+            const paylasanSayisi = item.paylasanlar ? item.paylasanlar.length : 1;
+            const badgeHTML = paylasanSayisi > 1 ? `<div class="badge-tekil">🔥 ${paylasanSayisi} Farklı Kişi Paylaştı (En Uygun Fiyat)</div>` : '';
+
             const card = document.createElement('div');
             card.className = 'card';
             card.onclick = () => detayAc(item);
@@ -193,9 +209,12 @@ HTML_TEMPLATE = """
                 ${mediaHTML}
                 <div class="details">
                     <div class="title">${item.detay.substring(0, 100)}...</div>
-                    <div class="meta">Grup: ${item.grup_adi} | Danışman: ${item.gonderen_adi} | Tarih: ${item.tarih}</div>
+                    <div class="meta">Grup: ${item.grup_adi} | İlan Sahibi: ${item.gonderen_adi} | Tarih: ${item.tarih}</div>
+                    ${badgeHTML}
                 </div>
-                <div class="price">${item.fiyat}</div>
+                <div class="price-box">
+                    <div class="price">${item.fiyat}</div>
+                </div>
             `;
             container.appendChild(card);
         });
@@ -216,8 +235,28 @@ HTML_TEMPLATE = """
 
     function detayAc(item) {
         document.getElementById('modalBaslik').innerText = `İlan Detayı - ${item.gonderen_adi}`;
-        document.getElementById('modalMeta').innerText = `Tarih: ${item.tarih} | İletişim: ${item.gonderen_tel_formatli} | Grup: ${item.grup_adi}`;
+        document.getElementById('modalMeta').innerText = `En Uygun Fiyat: ${item.fiyat} | İletişim: ${item.gonderen_tel_formatli}`;
         document.getElementById('modalMetin').innerHTML = urlYap(item.detay);
+
+        const paylasanlarBox = document.getElementById('modalPaylasanlar');
+        paylasanlarBox.innerHTML = '<strong>👥 Bu İlanı Paylaşan Danışmanlar / Teklifler:</strong><br><br>';
+        
+        if (item.paylasanlar && item.paylasanlar.length > 0) {
+            item.paylasanlar.forEach(p => {
+                paylasanlarBox.innerHTML += `
+                    <div class="paylasan-item">
+                        👤 <strong>${p.gonderen_adi}</strong> (${p.gonderen_tel_formatli}) 
+                        — <span style="color:#c53030; font-weight:bold;">${p.fiyat}</span> 
+                        <span style="font-size:11px; color:#718096;">[${p.tarih}]</span>
+                    </div>`;
+            });
+        } else {
+            paylasanlarBox.innerHTML += `
+                <div class="paylasan-item">
+                    👤 <strong>${item.gonderen_adi}</strong> (${item.gonderen_tel_formatli}) 
+                    — <span style="color:#c53030; font-weight:bold;">${item.fiyat}</span>
+                </div>`;
+        }
 
         const mediaBox = document.getElementById('modalMediaContainer');
         mediaBox.innerHTML = '';
@@ -251,11 +290,60 @@ def home():
 @app.route('/api/ilan-ekle', methods=['POST'])
 def ilan_ekle():
     data = request.json
-    if data:
-        fiyat_str, fiyat_raw = fiyat_bul(data.get('detay', ''))
-        data['fiyat'] = fiyat_str
-        data['fiyat_raw'] = fiyat_raw
+    if not data:
+        return jsonify({"status": "error"}), 400
+
+    fiyat_str, fiyat_raw = fiyat_bul(data.get('detay', ''))
+    data['fiyat'] = fiyat_str
+    data['fiyat_raw'] = fiyat_raw
+
+    yeni_ozet = metin_ozeti(data.get('detay', ''))
+    bulundu = False
+
+    for mevcut in ilanlar:
+        mevcut_ozet = metin_ozeti(mevcut.get('detay', ''))
+        
+        # Eğer ilan metinlerinin ilk 60 karakteri uyuşuyorsa aynı ilandır
+        if yeni_ozet and mevcut_ozet and (yeni_ozet in mevcut_ozet or mevcut_ozet in yeni_ozet):
+            bulundu = True
+            
+            if 'paylasanlar' not in mevcut:
+                mevcut['paylasanlar'] = [{
+                    'gonderen_adi': mevcut['gonderen_adi'],
+                    'gonderen_tel_formatli': mevcut['gonderen_tel_formatli'],
+                    'fiyat': mevcut['fiyat'],
+                    'fiyat_raw': mevcut['fiyat_raw'],
+                    'tarih': mevcut['tarih']
+                }]
+
+            # Yeni paylaşan kişiyi listeye ekle
+            mevcut['paylasanlar'].append({
+                'gonderen_adi': data['gonderen_adi'],
+                'gonderen_tel_formatli': data['gonderen_tel_formatli'],
+                'fiyat': data['fiyat'],
+                'fiyat_raw': data['fiyat_raw'],
+                'tarih': data['tarih']
+            })
+
+            # Eğer yeni gelen fiyat daha ucuzsa kartın ana fiyatını daha ucuz olanla güncelle
+            if data['fiyat_raw'] > 0 and (mevcut['fiyat_raw'] == 0 or data['fiyat_raw'] < mevcut['fiyat_raw']):
+                mevcut['fiyat'] = data['fiyat']
+                mevcut['fiyat_raw'] = data['fiyat_raw']
+                mevcut['gonderen_adi'] = data['gonderen_adi']
+                mevcut['gonderen_tel_formatli'] = data['gonderen_tel_formatli']
+            
+            break
+
+    if not bulundu:
+        data['paylasanlar'] = [{
+            'gonderen_adi': data['gonderen_adi'],
+            'gonderen_tel_formatli': data['gonderen_tel_formatli'],
+            'fiyat': data['fiyat'],
+            'fiyat_raw': data['fiyat_raw'],
+            'tarih': data['tarih']
+        }]
         ilanlar.insert(0, data)
+
     return jsonify({"status": "success"}), 200
 
 @app.route('/api/ilanlar', methods=['GET'])

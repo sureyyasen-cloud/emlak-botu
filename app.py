@@ -10,34 +10,41 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emlak Portföy & Filtre Paneli</title>
+    <title>Emlak Portföy & Detaylı Filtre Paneli</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
-        .header { background: #1e293b; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
-        .controls { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-        .controls input, .controls select { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; flex: 1; min-width: 140px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; }
+        .header { background: #0f172a; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        
+        /* Gelişmiş Filtre Çubuğu */
+        .controls { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+        .controls input, .controls select { padding: 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9em; width: 100%; box-sizing: border-box; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
         .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid #10b981; word-break: break-word; display: flex; flex-direction: column; justify-content: space-between; }
         .card.opsiyon { border-left-color: #f59e0b; }
-        .card-header { font-size: 0.85em; color: #0284c7; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; display: inline-block; }
-        .price { font-size: 1.3em; font-weight: bold; color: #0f172a; margin: 8px 0; }
-        .sender-info { background: #f8fafc; padding: 8px; border-radius: 6px; font-size: 0.85em; color: #334155; margin-bottom: 10px; line-height: 1.5; border: 1px solid #e2e8f0; }
+        .card-header { font-size: 0.85em; color: #0369a1; font-weight: bold; margin-bottom: 8px; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; display: inline-block; }
+        .price { font-size: 1.3em; font-weight: bold; color: #0f172a; margin: 5px 0; }
+        .sender-info { background: #f8fafc; padding: 8px; border-radius: 6px; font-size: 0.85em; color: #334155; margin-bottom: 10px; border: 1px solid #e2e8f0; }
         .badge { background: #10b981; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75em; float: right; }
         .badge.opsiyon { background: #f59e0b; }
+        
+        /* Video & Medya Alanı */
         .media-container { margin-top: 10px; text-align: center; background: #000; border-radius: 6px; overflow: hidden; }
-        .media-container img, .media-container video { max-width: 100%; max-height: 250px; display: block; margin: 0 auto; }
+        .media-container img, .media-container video { width: 100%; max-height: 240px; display: block; object-fit: contain; }
+        
         .footer-info { display: flex; justify-content: space-between; font-size: 0.75em; color: #94a3b8; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h2 style="margin:0;">🏠 Gelişmiş Emlak Portföy Paneli</h2>
+        <h2 style="margin:0;">🏠 Emlak Portföyü ve Detaylı Filtreleme Paneli</h2>
     </div>
 
-    <!-- GELİŞMİŞ SEÇENEKLİ FİLTRE ALANI -->
+    <!-- TÜM DETAYLI FİLTRELER -->
     <div class="controls">
-        <input type="text" id="searchInput" onkeyup="filterCards()" placeholder="Kelime / Konum Ara (örn: Bahçe Katı, Esenyurt)...">
-        <input type="text" id="phoneInput" onkeyup="filterCards()" placeholder="Telefon / İsim...">
+        <input type="text" id="searchInput" onkeyup="filterCards()" placeholder="Genel Arama (Kelime, İlan)...">
+        <input type="text" id="konumInput" onkeyup="filterCards()" placeholder="İl / İlçe / Mahalle / Sokak...">
+        <input type="text" id="phoneInput" onkeyup="filterCards()" placeholder="Telefon / Danışman Adı...">
         
         <select id="odaFilter" onchange="filterCards()">
             <option value="">Tüm Oda Sayıları</option>
@@ -46,6 +53,21 @@ HTML_TEMPLATE = """
             <option value="3+1">3+1</option>
             <option value="4+1">4+1</option>
             <option value="4+2">4+2</option>
+            <option value="Dublex">Dublex</option>
+        </select>
+
+        <select id="tapuFilter" onchange="filterCards()">
+            <option value="">Tapu / İskan Durumu</option>
+            <option value="kat mülkiyeti">Kat Mülkiyeti</option>
+            <option value="kat irtifakı">Kat İrtifakı</option>
+            <option value="iskanli">İskanlı</option>
+            <option value="arsa">Arsa Tapulu</option>
+        </select>
+
+        <select id="rayicFilter" onchange="filterCards()">
+            <option value="">Rayiç Durumu</option>
+            <option value="sınırsız">Rayiç Sınırsız</option>
+            <option value="rayiç">Rayiç Limitli</option>
         </select>
 
         <select id="statusFilter" onchange="filterCards()">
@@ -55,8 +77,8 @@ HTML_TEMPLATE = """
             <option value="Kiralık">Kiralık</option>
         </select>
 
-        <input type="number" id="minPrice" onkeyup="filterCards()" placeholder="Min TL">
-        <input type="number" id="maxPrice" onkeyup="filterCards()" placeholder="Max TL">
+        <input type="number" id="minPrice" onkeyup="filterCards()" placeholder="Min Fiyat (TL)">
+        <input type="number" id="maxPrice" onkeyup="filterCards()" placeholder="Max Fiyat (TL)">
     </div>
 
     <div class="grid" id="ilan-container">
@@ -68,15 +90,15 @@ HTML_TEMPLATE = """
              data-fiyat="{{ ilan.fiyat_raw }}">
             <div>
                 <span class="badge {% if 'opsiyon' in ilan.durum.lower() %}opsiyon{% endif %}">{{ ilan.durum }}</span>
-                <div class="card-header">👥 {{ ilan.grup_adi }}</div>
+                <div class="card-header">📢 {{ ilan.grup_adi }}</div>
                 <div class="price">{{ ilan.fiyat }}</div>
                 
                 <div class="sender-info">
                     👤 <b>Gönderen:</b> {{ ilan.gonderen_adi }}<br>
-                    📞 <b>Tel:</b> <a href="https://wa.me/{{ ilan.gonderen_tel }}" target="_blank" style="color:#2563eb; font-weight:bold;">{{ ilan.gonderen_tel_formatlı }}</a>
+                    📞 <b>Tel:</b> <a href="https://wa.me/{{ ilan.gonderen_tel }}" target="_blank" style="color:#2563eb; font-weight:bold;">{{ ilan.gonderen_tel_formatli }}</a>
                 </div>
 
-                <p style="color: #475569; font-size: 0.9em; line-height: 1.4; white-space: pre-line;">{{ ilan.detay }}</p>
+                <p style="color: #334155; font-size: 0.9em; line-height: 1.45; white-space: pre-line;">{{ ilan.detay }}</p>
             </div>
 
             <div>
@@ -85,26 +107,29 @@ HTML_TEMPLATE = """
                     {% if 'video' in ilan.media_mimetype %}
                     <video controls src="data:{{ ilan.media_mimetype }};base64,{{ ilan.media_data }}"></video>
                     {% else %}
-                    <img src="data:{{ ilan.media_mimetype }};base64,{{ ilan.media_data }}" alt="İlan Görseli">
+                    <img src="data:{{ ilan.media_mimetype }};base64,{{ ilan.media_data }}" alt="İlan Medyası">
                     {% endif %}
                 </div>
                 {% endif %}
                 <div class="footer-info">
                     <span>🕒 {{ ilan.tarih }}</span>
-                    <span>ID: #{{ loop.index }}</span>
+                    <span>İlan ID: #{{ loop.index }}</span>
                 </div>
             </div>
         </div>
         {% else %}
-        <p style="text-align:center; width:100%; color:#64748b;">Henüz ilan bulunmuyor. Bot çalıştıkça ilanlar görselleriyle buraya akacaktır.</p>
+        <p style="text-align:center; width:100%; color:#64748b;">Henüz kaydedilmiş ilan yok. Bot mesajları aktardıkça buraya yansıyacaktır.</p>
         {% endfor %}
     </div>
 
     <script>
         function filterCards() {
             let search = document.getElementById('searchInput').value.toLowerCase();
+            let konum = document.getElementById('konumInput').value.toLowerCase();
             let phone = document.getElementById('phoneInput').value.toLowerCase();
             let oda = document.getElementById('odaFilter').value.toLowerCase();
+            let tapu = document.getElementById('tapuFilter').value.toLowerCase();
+            let rayic = document.getElementById('rayicFilter').value.toLowerCase();
             let status = document.getElementById('statusFilter').value;
             let minP = parseFloat(document.getElementById('minPrice').value) || 0;
             let maxP = parseFloat(document.getElementById('maxPrice').value) || Infinity;
@@ -118,12 +143,15 @@ HTML_TEMPLATE = """
                 let cardFiyat = parseFloat(card.getAttribute('data-fiyat')) || 0;
 
                 let matchesSearch = cardDetay.includes(search);
+                let matchesKonum = cardDetay.includes(konum);
                 let matchesPhone = cardGonderen.includes(phone);
                 let matchesOda = oda === "" || cardDetay.includes(oda);
+                let matchesTapu = tapu === "" || cardDetay.includes(tapu);
+                let matchesRayic = rayic === "" || cardDetay.includes(rayic);
                 let matchesStatus = status === "" || cardDurum === status;
                 let matchesPrice = (cardFiyat === 0) || (cardFiyat >= minP && cardFiyat <= maxP);
 
-                if (matchesSearch && matchesPhone && matchesOda && matchesStatus && matchesPrice) {
+                if (matchesSearch && matchesKonum && matchesPhone && matchesOda && matchesTapu && matchesRayic && matchesStatus && matchesPrice) {
                     card.style.display = "flex";
                 } else {
                     card.style.display = "none";
@@ -147,7 +175,7 @@ def ilan_ekle():
             "grup_adi": str(data.get('grup_adi', 'Emlak Grubu')),
             "gonderen_adi": str(data.get('gonderen_adi', 'Emlak Danışmanı')),
             "gonderen_tel": str(data.get('gonderen_tel', '')),
-            "gonderen_tel_formatlı": str(data.get('gonderen_tel_formatlı', '')),
+            "gonderen_tel_formatli": str(data.get('gonderen_tel_formatli', '')),
             "fiyat": str(data.get('fiyat', 'Fiyat Belirtilmedi')),
             "fiyat_raw": data.get('fiyat_raw', 0),
             "detay": str(data.get('detay', '')),
